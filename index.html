@@ -19,23 +19,24 @@ button { margin-top:10px; padding:10px 20px; border:none; border-radius:8px; fon
 </style>
 
 <!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js"></script>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAMtUJmmSSxE2dG3wwkwcTSJ7h30HiQSVo",
-  authDomain: "zlotemaksymiliany.firebaseapp.com",
-  databaseURL: "https://zlotemaksymiliany-default-rtdb.firebaseio.com",
-  projectId: "zlotemaksymiliany",
-  storageBucket: "zlotemaksymiliany.firebasestorage.app",
-  messagingSenderId: "39025749499",
-  appId: "1:39025749499:web:2e4c6b6e03596a52776f5e",
-  measurementId: "G-HBC5J88RHL"
-};
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAMtUJmmSSxE2dG3wwkwcTSJ7h30HiQSVo",
+    authDomain: "zlotemaksymiliany.firebaseapp.com",
+    databaseURL: "https://zlotemaksymiliany-default-rtdb.firebaseio.com",
+    projectId: "zlotemaksymiliany",
+    storageBucket: "zlotemaksymiliany.firebasestorage.app",
+    messagingSenderId: "39025749499",
+    appId: "1:39025749499:web:2e4c6b6e03596a52776f5e",
+    measurementId: "G-HBC5J88RHL"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 </script>
 
 </head>
@@ -46,11 +47,7 @@ const db = getDatabase(app);
 <div class="grid" id="clips"></div>
 <button id="nextBtn" class="next" onclick="nextCategory()">PRZEJDŹ DO NASTĘPNEJ KATEGORII ➜</button>
 
-<script type="module">
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
-
-const db = getDatabase();
-
+<script>
 const categories = [
   { name:"Voicecrack Roku", clips:[
       "https://www.youtube.com/watch?v=obkqqhFRzdE",
@@ -95,8 +92,8 @@ function renderCategory(){
      <p id="count_${clipId}">Głosy: 0</p>
    </div>
    `;
-   const voteRef = ref(db, `votes/cat${currentCategory}/clip${index}`);
-   onValue(voteRef, snapshot => {
+   const voteRef = db.ref(`votes/cat${currentCategory}/clip${index}`);
+   voteRef.on('value', snapshot => {
      const val = snapshot.val() || 0;
      document.getElementById(`count_${clipId}`).innerText = "Głosy: " + val;
    });
@@ -104,12 +101,13 @@ function renderCategory(){
  document.getElementById("nextBtn").style.display = "none";
 }
 
-async function vote(clipId,index){
+function vote(clipId,index){
  if(userVotes[currentCategory]){ alert("Już zagłosowałeś w tej kategorii!"); return; }
- const voteRef = ref(db, `votes/cat${currentCategory}/clip${index}`);
- const snapshot = await get(voteRef);
- const currentVotes = snapshot.val() || 0;
- await set(voteRef, currentVotes + 1);
+ const voteRef = db.ref(`votes/cat${currentCategory}/clip${index}`);
+ voteRef.once('value').then(snapshot=>{
+   const currentVotes = snapshot.val() || 0;
+   voteRef.set(currentVotes + 1);
+ });
  userVotes[currentCategory] = true;
  document.getElementById("nextBtn").style.display = "inline-block";
 }
@@ -127,8 +125,8 @@ function showSummary(){
  document.body.innerHTML = `<h1>🏆 KONIEC GALI 🏆</h1><h2>Zwycięzcy</h2>`;
  categories.forEach((cat,catIndex)=>{
    cat.clips.forEach((clip,index)=>{
-     const voteRef = ref(db, `votes/cat${catIndex}/clip${index}`);
-     onValue(voteRef, snapshot=>{
+     const voteRef = db.ref(`votes/cat${catIndex}/clip${index}`);
+     voteRef.on('value', snapshot=>{
        const val = snapshot.val() || 0;
        document.body.innerHTML += `<p><b>${cat.name}</b> Clip ${index+1}: ${val} głosów</p>`;
      });
@@ -141,3 +139,4 @@ renderCategory();
 </script>
 </body>
 </html>
+
