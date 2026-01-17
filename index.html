@@ -92,7 +92,7 @@ function renderCategory(){
      <p id="count_${clipId}">Głosy: 0</p>
    </div>
    `;
-   const voteRef = db.ref(`votes/cat${currentCategory}/clip${index}`);
+   const voteRef = firebase.database().ref('votes/cat' + currentCategory + '/clip' + index);
    voteRef.on('value', snapshot => {
      const val = snapshot.val() || 0;
      document.getElementById(`count_${clipId}`).innerText = "Głosy: " + val;
@@ -101,15 +101,22 @@ function renderCategory(){
  document.getElementById("nextBtn").style.display = "none";
 }
 
+// Poprawiona funkcja głosowania
 function vote(clipId,index){
- if(userVotes[currentCategory]){ alert("Już zagłosowałeś w tej kategorii!"); return; }
- const voteRef = db.ref(`votes/cat${currentCategory}/clip${index}`);
- voteRef.once('value').then(snapshot=>{
-   const currentVotes = snapshot.val() || 0;
-   voteRef.set(currentVotes + 1);
- });
- userVotes[currentCategory] = true;
- document.getElementById("nextBtn").style.display = "inline-block";
+  if(userVotes[currentCategory]){
+    alert("Już zagłosowałeś w tej kategorii!");
+    return;
+  }
+  
+  var voteRef = firebase.database().ref('votes/cat' + currentCategory + '/clip' + index);
+
+  // Transakcja zwiększająca głos
+  voteRef.transaction(function(currentVotes) {
+    return (currentVotes || 0) + 1;
+  });
+
+  userVotes[currentCategory] = true;
+  document.getElementById("nextBtn").style.display = "inline-block";
 }
 
 function nextCategory(){
@@ -125,7 +132,7 @@ function showSummary(){
  document.body.innerHTML = `<h1>🏆 KONIEC GALI 🏆</h1><h2>Zwycięzcy</h2>`;
  categories.forEach((cat,catIndex)=>{
    cat.clips.forEach((clip,index)=>{
-     const voteRef = db.ref(`votes/cat${catIndex}/clip${index}`);
+     const voteRef = firebase.database().ref('votes/cat' + catIndex + '/clip' + index);
      voteRef.on('value', snapshot=>{
        const val = snapshot.val() || 0;
        document.body.innerHTML += `<p><b>${cat.name}</b> Clip ${index+1}: ${val} głosów</p>`;
@@ -139,4 +146,5 @@ renderCategory();
 </script>
 </body>
 </html>
+
 
