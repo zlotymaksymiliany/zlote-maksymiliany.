@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Złote Voicekracki - Public Voting</title>
+
+<style>
+body { background: radial-gradient(circle at top,#2a1f00,#0f0f1a); font-family: Arial; color:white; text-align:center; padding:20px; }
+h1 { color:gold; text-shadow:0 0 15px gold; font-size:3rem; }
+h2 { color:#ffd700; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; margin-top:20px; }
+.card { background:#1c1c2b; padding:15px; border-radius:15px; box-shadow:0 0 15px rgba(255,215,0,.25); }
+iframe { border-radius:10px; }
+button { margin-top:10px; padding:10px 20px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; }
+.vote { background:#00ff99; }
+.open { background:#ff4d4d; color:white; }
+.next { background:gold; margin-top:25px; display:none; }
+</style>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAMtUJmmSSxE2dG3wwkwcTSJ7h30HiQSVo",
+  authDomain: "zlotemaksymiliany.firebaseapp.com",
+  databaseURL: "https://zlotemaksymiliany-default-rtdb.firebaseio.com",
+  projectId: "zlotemaksymiliany",
+  storageBucket: "zlotemaksymiliany.firebasestorage.app",
+  messagingSenderId: "39025749499",
+  appId: "1:39025749499:web:2e4c6b6e03596a52776f5e",
+  measurementId: "G-HBC5J88RHL"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+</script>
+
+</head>
+<body>
+
+<h1>🏆 Złote Voicekracki - Public Voting 🏆</h1>
+<h2 id="categoryTitle"></h2>
+<div class="grid" id="clips"></div>
+<button id="nextBtn" class="next" onclick="nextCategory()">PRZEJDŹ DO NASTĘPNEJ KATEGORII ➜</button>
+
+<script type="module">
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
+
+const db = getDatabase();
+
+const categories = [
+  { name:"Voicecrack Roku", clips:[
+      "https://www.youtube.com/watch?v=obkqqhFRzdE",
+      "https://www.youtube.com/watch?v=h3QchHrGEwQ"
+    ]},
+  { name:"Debil Roku", clips:[
+      "https://www.youtube.com/watch?v=zHPFkihaKAs",
+      "https://www.youtube.com/watch?v=F8lBxcCE-_0",
+      "https://www.youtube.com/watch?v=p7qcg0jiizQ"
+    ]},
+  { name:"Zagranie Roku", clips:[
+      "https://www.youtube.com/watch?v=Kmf6xajajxA",
+      "https://youtu.be/p7qcg0jiizQ",
+      "https://www.youtube.com/watch?v=hEwD8awMDyE"
+    ]}
+];
+
+let currentCategory = 0;
+let userVotes = {};
+
+function toEmbed(url){
+ if(url.includes("watch?v=")) return "https://www.youtube.com/embed/" + url.split("v=")[1].split("&")[0];
+ if(url.includes("youtu.be/")) return "https://www.youtube.com/embed/" + url.split("youtu.be/")[1].split("&")[0];
+ return url;
+}
+
+function renderCategory(){
+ const cat = categories[currentCategory];
+ document.getElementById("categoryTitle").innerText = "Kategoria " + (currentCategory+1) + "/" + categories.length + ": " + cat.name;
+ const container = document.getElementById("clips");
+ container.innerHTML = "";
+ cat.clips.forEach((clip,index)=>{
+   const embed = toEmbed(clip);
+   const clipId = `cat${currentCategory}_clip${index}`;
+   container.innerHTML += `
+   <div class="card">
+     <iframe width="100%" height="200" src="${embed}" frameborder="0" allowfullscreen></iframe>
+     <br>
+     <a href="${clip}" target="_blank"><button class="open">OTWÓRZ NA YOUTUBE</button></a>
+     <br>
+     <button class="vote" id="vote_${clipId}" onclick="vote('${clipId}', ${index})">WYBIERZ</button>
+     <p id="count_${clipId}">Głosy: 0</p>
+   </div>
+   `;
+   const voteRef = ref(db, `votes/cat${currentCategory}/clip${index}`);
+   onValue(voteRef, snapshot => {
+     const val = snapshot.val() || 0;
+     document.getElementById(`count_${clipId}`).innerText = "Głosy: " + val;
+   });
+ });
+ document.getElementById("nextBtn").style.display = "none";
+}
+
+async function vote(clipId,index){
+ if(userVotes[currentCategory]){ alert("Już zagłosowałeś w tej kategorii!"); return; }
+ const voteRef = ref(db, `votes/cat${currentCategory}/clip${index}`);
+ const snapshot = await get(voteRef);
+ const currentVotes = snapshot.val() || 0;
+ await set(voteRef, currentVotes + 1);
+ userVotes[currentCategory] = true;
+ document.getElementById("nextBtn").style.display = "inline-block";
+}
+
+function nextCategory(){
+ if(currentCategory < categories.length-1){
+   currentCategory++;
+   renderCategory();
+ } else {
+   showSummary();
+ }
+}
+
+function showSummary(){
+ document.body.innerHTML = `<h1>🏆 KONIEC GALI 🏆</h1><h2>Zwycięzcy</h2>`;
+ categories.forEach((cat,catIndex)=>{
+   cat.clips.forEach((clip,index)=>{
+     const voteRef = ref(db, `votes/cat${catIndex}/clip${index}`);
+     onValue(voteRef, snapshot=>{
+       const val = snapshot.val() || 0;
+       document.body.innerHTML += `<p><b>${cat.name}</b> Clip ${index+1}: ${val} głosów</p>`;
+     });
+   });
+ });
+ document.body.innerHTML += `<br><button onclick="location.reload()">RESETUJ GALĘ</button>`;
+}
+
+renderCategory();
+</script>
+</body>
+</html>
